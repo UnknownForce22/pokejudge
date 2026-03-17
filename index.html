@@ -523,11 +523,11 @@ const listeningBanner = document.getElementById('listening-banner');
 // ── Supabase Auth ──
 const SUPABASE_URL = 'https://kxmupnboemoqbxppgmgs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-z0hTrWbdpfrtkwyzzAxkg_eHo-Wfgo';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentToken = null;
 
 async function initAuth() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sbClient.auth.getSession();
   if (!session) {
     window.location.href = '/login.html';
     return;
@@ -537,7 +537,7 @@ async function initAuth() {
 }
 
 async function handleLogout() {
-  await supabase.auth.signOut();
+  await sbClient.auth.signOut();
   window.location.href = '/login.html';
 }
 
