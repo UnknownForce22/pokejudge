@@ -676,13 +676,17 @@ function appendError(msg) {
 }
 
 function renderRuling(data) {
-  // Try to parse JSON response
   let ruling;
   try {
-    const jsonMatch = data.match(/```json\s*([\s\S]*?)\s*```/) || data.match(/(\{[\s\S]*\})/);
-    ruling = JSON.parse(jsonMatch ? jsonMatch[1] : data);
+    let clean = data.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+    ruling = JSON.parse(clean);
+    if (ruling.summary && ruling.summary.trim().startsWith('{')) {
+      try { ruling = JSON.parse(ruling.summary); } catch(e2) {}
+    }
   } catch(e) {
-    // Fallback: display as plain text ruling
     ruling = { verdict: 'INFO', summary: data, evidence: [] };
   }
 
