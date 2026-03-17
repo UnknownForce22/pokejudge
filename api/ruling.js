@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,30 +6,41 @@ export default async function handler(req, res) {
   }
 
   const { question, token } = req.body;
-
   if (!question) return res.status(400).json({ error: 'No question provided' });
   if (!token) return res.status(401).json({ error: 'Not logged in', redirect: '/login.html' });
 
-  // Verify the user with Supabase
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SECRET_KEY
-  );
+  // Verify user with Supabase REST API (no import needed)
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseSecret = process.env.SUPABASE_SECRET_KEY;
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) {
+  // Get user from token
+  const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'apikey': supabaseSecret
+    }
+  });
+
+  if (!userRes.ok) {
     return res.status(401).json({ error: 'Session expired. Please log in again.', redirect: '/login.html' });
   }
 
-  // Check usage for free users (5 rulings per day)
-  const today = new Date().toISOString().split('T')[0];
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const user = await userRes.json();
+  const userId = user.id;
+  const userEmail = user.email;
 
+  // Get profile
+  const profileRes = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+    headers: {
+      'Authorization': `Bearer ${supabaseSecret}`,
+      'apikey': supabaseSecret
+    }
+  });
+
+  const profiles = await profileRes.json();
+  const profile = profiles[0] || null;
   const isPaid = profile?.is_paid || false;
+  const today = new Date().toISOString().split('T')[0];
 
   if (!isPaid) {
     const usageCount = (profile?.last_ruling_date === today) ? (profile?.daily_count || 0) : 0;
@@ -40,14 +51,24 @@ export default async function handler(req, res) {
         limitReached: true
       });
     }
-    // Update usage count
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      email: user.email,
-      daily_count: usageCount + 1,
-      last_ruling_date: today,
-      is_paid: false,
-      updated_at: new Date().toISOString()
+
+    // Upsert profile usage
+    await fetch(`${supabaseUrl}/rest/v1/profiles`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseSecret}`,
+        'apikey': supabaseSecret,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        id: userId,
+        email: userEmail,
+        daily_count: (profile?.last_ruling_date === today ? (profile?.daily_count || 0) : 0) + 1,
+        last_ruling_date: today,
+        is_paid: false,
+        updated_at: new Date().toISOString()
+      })
     });
   }
 
@@ -65,13 +86,11 @@ When answering, ALWAYS respond ONLY with a JSON object (no markdown code fences,
   ]
 }
 
-Rules for your response:
-- verdict must be one of: LEGAL (play is allowed), ILLEGAL (play is not allowed), CONDITIONAL (depends on conditions), INFO (general info, no clear legal/illegal determination)
-- summary should be written as a judge would explain the ruling to players — clear, neutral, authoritative
+Rules:
+- verdict must be LEGAL, ILLEGAL, CONDITIONAL, or INFO
+- summary should be written as a judge would explain the ruling — clear, neutral, authoritative
 - evidence array MUST have 2-4 items from different sources when possible
-- For evidence, cite specific rule numbers, Compendium entries, or card text verbatim
-- Be accurate — if unsure, say so in the summary and use verdict INFO
-- Always check for: special timing rules, effect stacking, ability interactions, format legality`;
+- Be accurate — if unsure, use verdict INFO`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
