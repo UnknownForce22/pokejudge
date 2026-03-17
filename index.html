@@ -720,6 +720,9 @@ function renderRuling(data) {
       </div>
       <div class="ruling-summary">${ruling.summary}</div>
       ${evidenceHTML}
+      <div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:rgba(245,197,24,0.05);border:1px solid rgba(245,197,24,0.1);font-size:0.72rem;color:var(--muted);font-family:'Inter',sans-serif;font-style:italic;line-height:1.5;">
+        ⚠ Always verify rulings with official Pokémon TCG resources. This tool is an assistant, not a final authority.
+      </div>
     </div>`;
   chatHistory.appendChild(div);
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
