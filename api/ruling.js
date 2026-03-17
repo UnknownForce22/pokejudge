@@ -72,33 +72,27 @@ export default async function handler(req, res) {
     });
   }
 
-  const systemPrompt = `You are PokéJudge, an expert Pokémon Trading Card Game judge assistant. Your role is to answer rulings questions by consulting official sources.
+  const systemPrompt = `You are PokéJudge, a Pokémon TCG judge assistant. Respond ONLY with a JSON object, no extra text:
+{"verdict":"LEGAL"|"ILLEGAL"|"CONDITIONAL"|"INFO","summary":"2-3 sentence judge explanation","evidence":[{"source":"Official Rulebook"|"Compendium"|"Card Text"|"Tournament Rules"|"Web Search","text":"supporting rule or entry"}]}
+Source priority: 1) Official Rulebook 2) Compendium 3) Card Text 4) Tournament Rules 5) Web Search (last resort only).
+Include 2-3 evidence items. Be accurate — use INFO if unsure.`;
 
-SOURCE PRIORITY ORDER — always consult sources in this exact order:
-1. OFFICIAL RULEBOOK FIRST — cite specific page numbers and section names
-2. COMPENDIUM SECOND — cite the exact Q&A entry from the official Pokémon TCG Compendium
-3. CARD TEXT THIRD — quote the exact card text if relevant
-4. TOURNAMENT RULES FOURTH — cite the Play! Pokémon Tournament Rules if applicable
-5. WEB SEARCH LAST — only use web search if the answer cannot be found in the above sources, or if the question involves recent card releases, rotation dates, or errata
-
-When answering, ALWAYS respond ONLY with a JSON object (no markdown code fences, no extra text) with this exact structure:
-{
-  "verdict": "LEGAL" | "ILLEGAL" | "CONDITIONAL" | "INFO",
-  "summary": "Clear 2-4 sentence explanation of the ruling for a judge to communicate to players",
-  "evidence": [
-    {
-      "source": "Official Rulebook" | "Compendium" | "Card Text" | "Tournament Rules" | "Web Search",
-      "text": "Specific rule, compendium entry, or card text that supports this ruling"
+  // Option 4: Check cache first
+  const cacheKey = question.toLowerCase().trim().slice(0, 200);
+  const cacheRes = await fetch(`${supabaseUrl}/rest/v1/ruling_cache?question=eq.${encodeURIComponent(cacheKey)}&select=*&limit=1`, {
+    headers: {
+      'Authorization': `Bearer ${supabaseSecret}`,
+      'apikey': supabaseSecret
     }
-  ]
-}
-
-Rules:
-- verdict must be LEGAL, ILLEGAL, CONDITIONAL, or INFO
-- summary should be written as a judge would explain the ruling — clear, neutral, authoritative
-- evidence array MUST have 2-4 items, prioritizing Rulebook and Compendium sources over Web Search
-- Only include Web Search evidence if rulebook and compendium sources are insufficient
-- Be accurate — if unsure, use verdict INFO`;
+  });
+  if (cacheRes.ok) {
+    const cached = await cacheRes.json();
+    if (cached && cached[0] && cached[0].result) {
+      console.log('Cache hit!');
+      const remaining = isPaid ? 'unlimited' : Math.max(0, 4 - (profile?.last_ruling_date === today ? profile?.daily_count || 0 : 0));
+      return res.status(200).json({ result: cached[0].result, remaining, isPaid, cached: true });
+    }
+  }
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -111,7 +105,7 @@ Rules:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 500,
         system: systemPrompt,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: `Pokémon TCG ruling question: ${question}` }]
@@ -128,6 +122,22 @@ Rules:
 
     const usageCount = (profile?.last_ruling_date === today ? profile?.daily_count || 0 : 0);
     const remaining = isPaid ? 'unlimited' : Math.max(0, 4 - usageCount);
+    // Save to cache for future use
+    fetch(`${supabaseUrl}/rest/v1/ruling_cache`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${supabaseSecret}`,
+        'apikey': supabaseSecret,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        question: cacheKey,
+        result: text,
+        created_at: new Date().toISOString()
+      })
+    }).catch(() => {}); // Don't block response if cache save fails
+
     return res.status(200).json({ result: text, remaining, isPaid });
 
   } catch (err) {
