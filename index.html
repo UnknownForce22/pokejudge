@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PokéJudge – TCG Ruling Assistant</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --gold: #f5c518;
@@ -464,6 +465,8 @@
     <p>TCG Ruling Assistant</p>
   </div>
   <div class="judge-badge">⚖ Judge Tool</div>
+  <div id="usage-badge" style="margin-left:8px;background:rgba(245,197,24,0.1);border:1px solid rgba(245,197,24,0.3);border-radius:20px;padding:4px 10px;font-size:0.68rem;color:var(--gold);font-family:'Inter',sans-serif;display:none"></div>
+  <button id="logout-btn" onclick="handleLogout()" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 12px;font-size:0.68rem;color:var(--muted);font-family:'Inter',sans-serif;cursor:pointer;display:none">Sign out</button>
 </header>
 
 <main>
@@ -516,6 +519,41 @@ const input = document.getElementById('query-input');
 const sendBtn = document.getElementById('send-btn');
 const micBtn = document.getElementById('mic-btn');
 const listeningBanner = document.getElementById('listening-banner');
+
+// ── Supabase Auth ──
+const SUPABASE_URL = 'https://kxmupnboemoqbxppgmgs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_-z0hTrWbdpfrtkwyzzAxkg_eHo-Wfgo';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentToken = null;
+
+async function initAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    window.location.href = '/login.html';
+    return;
+  }
+  currentToken = session.access_token;
+  document.getElementById('logout-btn').style.display = 'block';
+}
+
+async function handleLogout() {
+  await supabase.auth.signOut();
+  window.location.href = '/login.html';
+}
+
+function updateUsageBadge(remaining, isPaid) {
+  const badge = document.getElementById('usage-badge');
+  badge.style.display = 'block';
+  if (isPaid) {
+    badge.textContent = '∞ Unlimited';
+    badge.style.color = '#4ade80';
+  } else {
+    badge.textContent = `${remaining} rulings left today`;
+    badge.style.color = remaining <= 1 ? '#ff8066' : 'var(--gold)';
+  }
+}
+
+initAuth();
 
 // ── Speech Recognition Setup ──
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -699,14 +737,24 @@ async function submitQuery() {
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ question, token: currentToken })
     });
 
     const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.error || 'API error');
+    if (data.redirect) { window.location.href = data.redirect; return; }
+
+    if (data.limitReached) {
+      removeLoading();
+      appendError('🏆 ' + data.message);
+      sendBtn.disabled = false;
+      micBtn.disabled = false;
+      return;
     }
+
+    if (!response.ok) throw new Error(data.error || 'API error');
+
+    if (data.remaining !== undefined) updateUsageBadge(data.remaining, data.isPaid);
 
     removeLoading();
     renderRuling(data.result);
@@ -720,4 +768,4 @@ async function submitQuery() {
 }
 </script>
 </body>
-</html> 
+</html>
