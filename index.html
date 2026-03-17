@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PokéJudge – TCG Ruling Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #f5c518;
+    --gold-dim: #c9a012;
+    --red: #e3350d;
+    --blue: #1a6fb5;
+    --dark: #0a0d14;
+    --panel: #111520;
+    --panel2: #161b2a;
+    --border: rgba(245,197,24,0.18);
+    --text: #e8eaf0;
+    --muted: #7a8099;
+    --glow: 0 0 18px rgba(245,197,24,0.22);
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(26,111,181,0.18) 0%, transparent 70%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(245,197,24,0.03) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(245,197,24,0.03) 40px);
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,13,20,0.92);
+    backdrop-filter: blur(10px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .pokeball-icon {
+    width: 38px; height: 38px; flex-shrink: 0;
+    background: conic-gradient(var(--red) 180deg, white 180deg);
+    border-radius: 50%;
+    position: relative;
+    border: 2.5px solid #222;
+    box-shadow: 0 0 14px rgba(227,53,13,0.4);
+  }
+  .pokeball-icon::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%,-50%);
+    width: 11px; height: 11px;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid #222;
+    z-index: 2;
+  }
+  .pokeball-icon::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 48%; right: 0;
+    height: 2.5px;
+    background: #222;
+  }
+  .header-text h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.25rem;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    line-height: 1;
+  }
+  .header-text p {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .judge-badge {
+    margin-left: auto;
+    background: linear-gradient(135deg, #1a3a6b, #0d1f3c);
+    border: 1px solid rgba(26,111,181,0.5);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.68rem;
+    color: #6ab0f5;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+  }
+
+  /* ── Main layout ── */
+  main { padding: 16px 16px 100px; max-width: 700px; margin: 0 auto; }
+
+  /* ── Intro card ── */
+  .intro-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 20px;
+    box-shadow: var(--glow);
+  }
+  .intro-card h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .intro-card p {
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.55;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+  .sources-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .source-chip {
+    background: rgba(26,111,181,0.12);
+    border: 1px solid rgba(26,111,181,0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    color: #6ab0f5;
+    font-family: 'Inter', sans-serif;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .source-chip::before { content: '●'; font-size: 0.5rem; }
+
+  /* ── Example prompts ── */
+  .examples-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'Inter', sans-serif;
+  }
+  .examples-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .example-btn {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.78rem;
+    color: #a8b0cc;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.4;
+    transition: all 0.18s;
+  }
+  .example-btn:hover {
+    border-color: rgba(245,197,24,0.4);
+    color: var(--text);
+    background: rgba(245,197,24,0.05);
+  }
+  .example-btn .ex-icon { font-size: 1rem; display: block; margin-bottom: 4px; }
+
+  /* ── Chat history ── */
+  #chat-history { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+
+  .msg-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #1a3a6b, #1056a0);
+    border: 1px solid rgba(26,111,181,0.5);
+    border-radius: 14px 14px 3px 14px;
+    padding: 12px 15px;
+    max-width: 88%;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .msg-judge {
+    align-self: flex-start;
+    max-width: 100%;
+    width: 100%;
+  }
+  .msg-judge-inner {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px 14px 14px 14px;
+    padding: 16px;
+    box-shadow: var(--glow);
+  }
+
+  .ruling-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .ruling-verdict {
+    font-family: 'Cinzel', serif;
+    font-size: 1.0rem;
+    letter-spacing: 0.06em;
+  }
+  .verdict-legal { color: #4ade80; }
+  .verdict-illegal { color: var(--red); }
+  .verdict-conditional { color: var(--gold); }
+  .verdict-info { color: #6ab0f5; }
+
+  .verdict-badge {
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+    margin-left: auto;
+  }
+  .badge-legal { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+  .badge-illegal { background: rgba(227,53,13,0.15); color: #ff6b4a; border: 1px solid rgba(227,53,13,0.3); }
+  .badge-conditional { background: rgba(245,197,24,0.15); color: var(--gold); border: 1px solid rgba(245,197,24,0.3); }
+  .badge-info { background: rgba(26,111,181,0.15); color: #6ab0f5; border: 1px solid rgba(26,111,181,0.3); }
+
+  .ruling-summary {
+    font-size: 0.9rem;
+    line-height: 1.65;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    color: #c8cedf;
+    margin-bottom: 14px;
+  }
+
+  .evidence-section {
+    border-top: 1px solid rgba(245,197,24,0.1);
+    padding-top: 12px;
+  }
+  .evidence-label {
+    font-size: 0.68rem;
+    color: var(--gold-dim);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .evidence-label::before { content: ''; display: inline-block; width: 16px; height: 1px; background: var(--gold-dim); }
+
+  .evidence-item {
+    background: rgba(0,0,0,0.25);
+    border-left: 2.5px solid var(--gold-dim);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-family: 'Inter', sans-serif;
+  }
+  .evidence-item.source-compendium { border-left-color: #4ade80; }
+  .evidence-item.source-rulebook { border-left-color: var(--blue); }
+  .evidence-item.source-web { border-left-color: #a78bfa; }
+
+  .evidence-source {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .source-compendium .evidence-source { color: #4ade80; }
+  .source-rulebook .evidence-source { color: #6ab0f5; }
+  .source-web .evidence-source { color: #a78bfa; }
+
+  .evidence-text {
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: #a8b2c8;
+    font-weight: 300;
+  }
+
+  /* ── Loading ── */
+  .loading-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .loading-spinner {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border: 2.5px solid rgba(245,197,24,0.15);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-size: 0.82rem;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+  .loading-text span {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--gold-dim);
+    margin-top: 3px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Input bar ── */
+  .input-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(10,13,20,0.96);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px 20px;
+  }
+  .input-wrap {
+    max-width: 700px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  textarea {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid rgba(245,197,24,0.2);
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 300;
+    resize: none;
+    line-height: 1.5;
+    outline: none;
+    min-height: 46px;
+    max-height: 120px;
+    transition: border-color 0.2s;
+  }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-color: rgba(245,197,24,0.5); }
+
+  .send-btn {
+    width: 46px; height: 46px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 12px rgba(245,197,24,0.3);
+    color: #1a1200;
+  }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 18px rgba(245,197,24,0.45); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .mic-btn {
+    width: 46px; height: 46px; flex-shrink: 0;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+    transition: all 0.18s;
+    color: var(--muted);
+    position: relative;
+  }
+  .mic-btn:hover { border-color: rgba(245,197,24,0.4); color: var(--gold); }
+  .mic-btn.listening {
+    background: rgba(227,53,13,0.12);
+    border-color: rgba(227,53,13,0.6);
+    color: var(--red);
+    animation: mic-pulse 1.2s ease-in-out infinite;
+  }
+  .mic-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(227,53,13,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(227,53,13,0); }
+  }
+
+  /* Listening overlay banner */
+  .listening-banner {
+    display: none;
+    position: fixed;
+    top: 70px; left: 50%; transform: translateX(-50%);
+    background: rgba(227,53,13,0.92);
+    color: white;
+    padding: 7px 20px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    z-index: 200;
+    backdrop-filter: blur(10px);
+    gap: 8px;
+    align-items: center;
+    box-shadow: 0 4px 18px rgba(227,53,13,0.35);
+    animation: banner-in 0.2s ease;
+  }
+  .listening-banner.active { display: flex; }
+  @keyframes banner-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  .listening-dot {
+    width: 8px; height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Error ── */
+  .error-card {
+    background: rgba(227,53,13,0.08);
+    border: 1px solid rgba(227,53,13,0.3);
+    border-radius: var(--radius);
+    padding: 14px;
+    font-size: 0.82rem;
+    color: #ff8066;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(245,197,24,0.2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="pokeball-icon"></div>
+  <div class="header-text">
+    <h1>PokéJudge</h1>
+    <p>TCG Ruling Assistant</p>
+  </div>
+  <div class="judge-badge">⚖ Judge Tool</div>
+</header>
+
+<main>
+  <div class="intro-card">
+    <h2>How It Works</h2>
+    <p>Describe a game situation, play, or ruling question. PokéJudge will consult the official Pokémon TCG Rulebook, the Compendium, and current rulings to give you a supported call.</p>
+    <div class="sources-row">
+      <div class="source-chip" style="border-color:rgba(74,222,128,0.3);color:#4ade80">Compendium (Rulings DB)</div>
+      <div class="source-chip">Official Rulebook</div>
+      <div class="source-chip" style="border-color:rgba(167,139,250,0.3);color:#a78bfa">Web Search</div>
+    </div>
+  </div>
+
+  <div class="examples-label">Try asking about…</div>
+  <div class="examples-grid">
+    <button class="example-btn" onclick="fillExample(this.dataset.q)" data-q="Can a player use Iono when their hand is empty to shuffle their opponent's hand?">
+      <span class="ex-icon">🃏</span>Can Iono be used with an empty hand to disrupt the opponent?
+    </button>
+    <button class="example-btn" onclick="fillExample(this.dataset.q)" data-q="If a Pokémon has both a Ability that says it can't be affected by Special Conditions and an opponent uses Toxic, what happens?">
+      <span class="ex-icon">☠️</span>Ability immunity vs Special Conditions like Toxic
+    </button>
+    <button class="example-btn" onclick="fillExample(this.dataset.q)" data-q="Can you use a Trainer card during your opponent's turn using an effect that grants an extra action?">
+      <span class="ex-icon">🔄</span>Playing Trainer cards on opponent's turn
+    </button>
+    <button class="example-btn" onclick="fillExample(this.dataset.q)" data-q="Does Boss's Orders allow you to switch the opponent's active Pokémon to a Pokémon that has a Retreat Cost of 0 for free, or does the retreat cost still apply?">
+      <span class="ex-icon">👔</span>Boss's Orders + zero retreat cost interaction
+    </button>
+  </div>
+
+  <div id="chat-history"></div>
+</main>
+
+<div class="listening-banner" id="listening-banner">
+  <div class="listening-dot"></div>
+  Listening… speak your ruling question
+</div>
+
+<div class="input-bar">
+  <div class="input-wrap">
+    <textarea id="query-input" placeholder="Describe the game situation or ruling question…" rows="1"></textarea>
+    <button class="mic-btn" id="mic-btn" onclick="toggleMic()" title="Speak your question">🎙️</button>
+    <button class="send-btn" id="send-btn" onclick="submitQuery()" title="Get Ruling">⚖</button>
+  </div>
+</div>
+
+<script>
+const API_URL = "/api/ruling";
+const chatHistory = document.getElementById('chat-history');
+const input = document.getElementById('query-input');
+const sendBtn = document.getElementById('send-btn');
+const micBtn = document.getElementById('mic-btn');
+const listeningBanner = document.getElementById('listening-banner');
+
+// ── Speech Recognition Setup ──
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    isListening = true;
+    micBtn.classList.add('listening');
+    listeningBanner.classList.add('active');
+    input.placeholder = 'Listening…';
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    // Show interim results live in the textarea
+    input.value = final || interim;
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    micBtn.classList.remove('listening');
+    listeningBanner.classList.remove('active');
+    input.placeholder = 'Describe the game situation or ruling question…';
+    // Auto-submit if something was captured
+    if (input.value.trim()) submitQuery();
+  };
+
+  recognition.onerror = (e) => {
+    isListening = false;
+    micBtn.classList.remove('listening');
+    listeningBanner.classList.remove('active');
+    input.placeholder = 'Describe the game situation or ruling question…';
+    if (e.error === 'not-allowed') {
+      appendError('Microphone access denied. Please allow microphone permission in your browser settings.');
+    } else if (e.error !== 'no-speech') {
+      appendError('Speech recognition error: ' + e.error);
+    }
+  };
+} else {
+  // Hide mic button if API not supported
+  micBtn.style.display = 'none';
+}
+
+function toggleMic() {
+  if (!recognition) return;
+  if (isListening) {
+    recognition.stop();
+  } else {
+    input.value = '';
+    input.style.height = 'auto';
+    recognition.start();
+  }
+}
+
+// Auto-resize textarea
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+});
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuery(); }
+});
+
+function fillExample(q) {
+  input.value = q;
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  input.focus();
+}
+
+function appendUserMsg(text) {
+  const div = document.createElement('div');
+  div.className = 'msg-user';
+  div.textContent = text;
+  chatHistory.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function appendLoading() {
+  const div = document.createElement('div');
+  div.className = 'loading-card';
+  div.id = 'loading-msg';
+  div.innerHTML = `
+    <div class="loading-spinner"></div>
+    <div class="loading-text">
+      Consulting rulebooks & compendium…
+      <span>🔍 Searching official sources</span>
+    </div>`;
+  chatHistory.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function removeLoading() {
+  const el = document.getElementById('loading-msg');
+  if (el) el.remove();
+}
+
+function appendError(msg) {
+  const div = document.createElement('div');
+  div.className = 'error-card';
+  div.textContent = '⚠ ' + msg;
+  chatHistory.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+function renderRuling(data) {
+  // Try to parse JSON response
+  let ruling;
+  try {
+    const jsonMatch = data.match(/```json\s*([\s\S]*?)\s*```/) || data.match(/(\{[\s\S]*\})/);
+    ruling = JSON.parse(jsonMatch ? jsonMatch[1] : data);
+  } catch(e) {
+    // Fallback: display as plain text ruling
+    ruling = { verdict: 'INFO', summary: data, evidence: [] };
+  }
+
+  const verdictMap = {
+    LEGAL: { cls: 'verdict-legal', badge: 'badge-legal', label: '✓ Legal Play' },
+    ILLEGAL: { cls: 'verdict-illegal', badge: 'badge-illegal', label: '✗ Illegal Play' },
+    CONDITIONAL: { cls: 'verdict-conditional', badge: 'badge-conditional', label: '⚡ Conditional' },
+    INFO: { cls: 'verdict-info', badge: 'badge-info', label: 'ℹ Ruling Info' },
+  };
+  const v = verdictMap[ruling.verdict] || verdictMap['INFO'];
+
+  let evidenceHTML = '';
+  if (ruling.evidence && ruling.evidence.length > 0) {
+    evidenceHTML = `<div class="evidence-section">
+      <div class="evidence-label">Supporting Evidence</div>
+      ${ruling.evidence.map(e => `
+        <div class="evidence-item source-${(e.source||'web').toLowerCase().replace(/\s+/g,'_')}">
+          <div class="evidence-source">${e.source || 'Source'}</div>
+          <div class="evidence-text">${e.text}</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  const div = document.createElement('div');
+  div.className = 'msg-judge';
+  div.innerHTML = `
+    <div class="msg-judge-inner">
+      <div class="ruling-header">
+        <div class="ruling-verdict ${v.cls}">${v.label}</div>
+        <div class="verdict-badge ${v.badge}">${ruling.verdict || 'INFO'}</div>
+      </div>
+      <div class="ruling-summary">${ruling.summary}</div>
+      ${evidenceHTML}
+    </div>`;
+  chatHistory.appendChild(div);
+  div.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+async function submitQuery() {
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.disabled = true;
+  micBtn.disabled = true;
+
+  appendUserMsg(question);
+  appendLoading();
+
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'API error');
+    }
+
+    removeLoading();
+    renderRuling(data.result);
+  } catch (err) {
+    removeLoading();
+    appendError('Could not get ruling: ' + err.message);
+  } finally {
+    sendBtn.disabled = false;
+    micBtn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
