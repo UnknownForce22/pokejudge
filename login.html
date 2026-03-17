@@ -283,10 +283,10 @@
   // Initialize Supabase
   const SUPABASE_URL = 'https://kxmupnboemoqbxppgmgs.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_-z0hTrWbdpfrtkwyzzAxkg_eHo-Wfgo';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   // Check if already logged in
-  supabase.auth.getSession().then(({ data: { session } }) => {
+  sbClient.auth.getSession().then(({ data: { session } }) => {
     if (session) window.location.href = '/';
   });
 
@@ -313,7 +313,7 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Signing in…';
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await sbClient.auth.signInWithPassword({ email, password });
 
     if (error) {
       showMsg('login-msg', error.message, 'error');
@@ -338,7 +338,7 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Creating account…';
 
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await sbClient.auth.signUp({ email, password });
 
     if (error) {
       showMsg('signup-msg', error.message, 'error');
