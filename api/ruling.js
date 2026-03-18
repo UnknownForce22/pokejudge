@@ -75,7 +75,25 @@ export default async function handler(req, res) {
   const systemPrompt = `You are PokéJudge, a Pokémon TCG judge assistant. Respond ONLY with a JSON object, no extra text:
 {"verdict":"LEGAL"|"ILLEGAL"|"CONDITIONAL"|"INFO","summary":"2-3 sentence judge explanation","evidence":[{"source":"Official Rulebook"|"Compendium"|"Card Text"|"Tournament Rules"|"Web Search","text":"supporting rule or entry"}]}
 Source priority: 1) Official Rulebook 2) Compendium 3) Card Text 4) Tournament Rules 5) Web Search (last resort only).
-Include 2-3 evidence items. Be accurate — use INFO if unsure.`;
+Include 2-3 evidence items. Be accurate — use INFO if unsure.
+
+REGULATION MARKS & SET REFERENCE (use this for format legality questions):
+D - Sword & Shield base, Rebel Clash, Darkness Ablaze, Champion's Path, Vivid Voltage
+E - Battle Styles, Chilling Reign, Evolving Skies, Celebrations, Fusion Strike, Brilliant Stars
+F - Astral Radiance, Pokemon GO, Lost Origin, Silver Tempest, Crown Zenith
+G - Scarlet & Violet base, Paldea Evolved, Obsidian Flames, 151, Paradox Rift, Paldean Fates, Temporal Forces
+H - Twilight Masquerade, Shrouded Fable, Stellar Crown, Surging Sparks, Prismatic Evolutions
+I - Journey Together, Destined Rivals (and future 2025-2026 sets)
+
+CURRENT STANDARD FORMAT (as of 2026):
+- LEGAL: Regulation marks G, H, I and beyond
+- ILLEGAL: Regulation marks D, E, F (rotated out)
+- TCG Live rotation: March 26, 2026
+- In-person rotation: April 10, 2026
+- Cards with no regulation mark: check if a current reprint with G/H/I exists
+- Special sets like Crown Zenith, Celebrations may have mixed legality based on reprint marks
+
+Always check if an older card has been reprinted with a current regulation mark before calling it illegal.`;
 
   // Option 4: Check cache first
   const cacheKey = question.toLowerCase().trim().slice(0, 200);
