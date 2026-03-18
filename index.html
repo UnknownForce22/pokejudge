@@ -450,6 +450,99 @@
     font-weight: 300;
   }
 
+  /* ── News Tab ── */
+  .nav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px 0;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .nav-tab {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    padding: 8px 18px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 0.06em;
+    transition: all 0.18s;
+  }
+  .nav-tab.active {
+    background: var(--panel);
+    border-color: var(--border);
+    color: var(--gold);
+  }
+  .news-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .news-card.important {
+    border-left: 3px solid var(--gold);
+  }
+  .news-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .news-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+  }
+  .news-category {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: 'Inter', sans-serif;
+  }
+  .cat-rules { background: rgba(227,53,13,0.15); color: #ff8066; border: 1px solid rgba(227,53,13,0.3); }
+  .cat-rotation { background: rgba(245,197,24,0.15); color: var(--gold); border: 1px solid rgba(245,197,24,0.3); }
+  .cat-tournament { background: rgba(26,111,181,0.15); color: #6ab0f5; border: 1px solid rgba(26,111,181,0.3); }
+  .cat-format { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+  .cat-announcement { background: rgba(167,139,250,0.15); color: #a78bfa; border: 1px solid rgba(167,139,250,0.3); }
+  .news-summary {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: #a8b2c8;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+  }
+  .news-date {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    margin-top: 8px;
+  }
+  .news-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88rem;
+  }
+  .last-updated {
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
   /* scrollbar */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -469,6 +562,10 @@
   <button id="logout-btn" onclick="handleLogout()" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 12px;font-size:0.68rem;color:var(--muted);font-family:'Inter',sans-serif;cursor:pointer;display:none">Sign out</button>
 </header>
 
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tab-rulings" onclick="switchView('rulings')">⚖ Rulings</button>
+  <button class="nav-tab" id="tab-news" onclick="switchView('news')">📰 TCG News</button>
+</div>
 <main>
   <div class="intro-card">
     <h2>How It Works</h2>
@@ -498,6 +595,15 @@
 
   <div id="chat-history"></div>
 </main>
+
+<div id="news-view" style="display:none;padding:16px 16px 100px;max-width:700px;margin:0 auto;">
+  <div id="news-content">
+    <div class="news-loading">
+      <div class="loading-spinner" style="margin:0 auto 12px;width:28px;height:28px;border:2.5px solid rgba(245,197,24,0.15);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      Loading latest TCG news…
+    </div>
+  </div>
+</div>
 
 <div style="text-align:center;padding:12px 16px 80px;font-size:0.72rem;color:var(--muted);font-family:'Inter',sans-serif;">
   Questions or feedback? <a href="mailto:support@pokejudge.com" style="color:var(--gold-dim);text-decoration:none;">support@pokejudge.com</a>
@@ -780,3 +886,71 @@ async function submitQuery() {
 </script>
 </body>
 </html>
+<script>
+// ── News Tab Logic ──
+let newsLoaded = false;
+
+function switchView(view) {
+  const rulingView = document.querySelector('main');
+  const newsView = document.getElementById('news-view');
+  const navTabs = document.querySelector('.nav-tabs');
+
+  document.getElementById('tab-rulings').classList.toggle('active', view === 'rulings');
+  document.getElementById('tab-news').classList.toggle('active', view === 'news');
+
+  if (view === 'news') {
+    rulingView.style.display = 'none';
+    newsView.style.display = 'block';
+    if (!newsLoaded) loadNews();
+  } else {
+    rulingView.style.display = 'block';
+    newsView.style.display = 'none';
+  }
+}
+
+async function loadNews() {
+  try {
+    const response = await fetch('/api/news');
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.error || 'Failed to load news');
+
+    newsLoaded = true;
+    renderNews(data.news, data.lastUpdated);
+  } catch(err) {
+    document.getElementById('news-content').innerHTML = `
+      <div class="error-card">⚠ Could not load news: ${err.message}</div>`;
+  }
+}
+
+function renderNews(items, lastUpdated) {
+  const catClass = {
+    'Rules': 'cat-rules',
+    'Rotation': 'cat-rotation',
+    'Tournament': 'cat-tournament',
+    'Format': 'cat-format',
+    'Announcement': 'cat-announcement'
+  };
+
+  const date = new Date(lastUpdated).toLocaleDateString('en-US', { 
+    month: 'long', day: 'numeric', year: 'numeric' 
+  });
+
+  let html = `<div class="last-updated">Last updated: ${date} · Refreshes weekly</div>`;
+
+  items.forEach(item => {
+    const cls = catClass[item.category] || 'cat-announcement';
+    html += `
+      <div class="news-card ${item.important ? 'important' : ''}">
+        <div class="news-header">
+          <div class="news-title">${item.important ? '⚡ ' : ''}${item.title}</div>
+          <div class="news-category ${cls}">${item.category}</div>
+        </div>
+        <div class="news-summary">${item.summary}</div>
+        <div class="news-date">📅 ${item.date}</div>
+      </div>`;
+  });
+
+  document.getElementById('news-content').innerHTML = html;
+}
+</script>
