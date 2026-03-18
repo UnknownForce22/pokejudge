@@ -253,6 +253,22 @@
     </div>
     <button class="submit-btn" id="login-btn" onclick="handleLogin()">⚖ Sign In</button>
     <div class="message" id="login-msg"></div>
+    <div style="text-align:center;margin-top:14px;">
+      <a href="#" onclick="showForgotPassword()" style="font-size:0.78rem;color:var(--muted);font-family:'Inter',sans-serif;text-decoration:none;border-bottom:1px solid rgba(122,128,153,0.3);padding-bottom:1px;">Forgot your password?</a>
+    </div>
+
+    <!-- Forgot Password Form (hidden by default) -->
+    <div id="form-forgot" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="forgot-email" placeholder="your@email.com" />
+      </div>
+      <button class="submit-btn" id="forgot-btn" onclick="handleForgotPassword()">📧 Send Reset Link</button>
+      <div class="message" id="forgot-msg"></div>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="#" onclick="hideForgotPassword()" style="font-size:0.78rem;color:var(--muted);font-family:'Inter',sans-serif;text-decoration:none;border-bottom:1px solid rgba(122,128,153,0.3);padding-bottom:1px;">Back to Sign In</a>
+      </div>
+    </div>
   </div>
 
   <!-- SIGNUP FORM -->
@@ -348,6 +364,41 @@
       showMsg('signup-msg', '✅ Account created! Check your email to confirm, then sign in.', 'success');
       btn.disabled = false;
       btn.innerHTML = '🎮 Create Account';
+    }
+  }
+
+  function showForgotPassword() {
+    document.getElementById('form-forgot').style.display = 'block';
+    document.querySelector('[onclick="showForgotPassword()"]').style.display = 'none';
+  }
+
+  function hideForgotPassword() {
+    document.getElementById('form-forgot').style.display = 'none';
+    document.querySelector('[onclick="showForgotPassword()"]').style.display = 'inline';
+    document.getElementById('forgot-msg').className = 'message';
+  }
+
+  async function handleForgotPassword() {
+    const email = document.getElementById('forgot-email').value.trim();
+    const btn = document.getElementById('forgot-btn');
+
+    if (!email) return showMsg('forgot-msg', 'Please enter your email address.', 'error');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending…';
+
+    const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://pokejudge.com/reset.html'
+    });
+
+    if (error) {
+      showMsg('forgot-msg', error.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = '📧 Send Reset Link';
+    } else {
+      showMsg('forgot-msg', '✅ Reset link sent! Check your email inbox.', 'success');
+      btn.disabled = false;
+      btn.innerHTML = '📧 Send Reset Link';
     }
   }
 
